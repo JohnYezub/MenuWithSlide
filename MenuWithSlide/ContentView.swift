@@ -7,82 +7,109 @@
 
 import SwiftUI
 
-struct AreaWithGesture: View {
-    @State private var valueX: CGFloat = 0
-    @State private var isShown = false
-    private let offsetAnimation = Animation.easeIn(duration: 0.5)
-    private let timerInterval = TimeInterval(0.6)
-
+struct ContentView: View {
+    @State private var isHidden: Bool = true
     var body: some View {
         ZStack(alignment: .topTrailing) {
-
+            Color.blue.opacity(0.1)
+                .ignoresSafeArea()
             Button {
-                withAnimation(offsetAnimation) {
-                    isShown = true
-                }
+                isHidden = false
             } label: {
                 Image(systemName: "slider.horizontal.3")
                     .resizable()
                     .frame(width: 30, height: 25)
+                    .padding()
             }
-            .padding()
+        }
+        .overlay(AreaWithGesture(isHidden: $isHidden))
+    }
+}
 
+struct AreaWithGesture: View {
+    @Binding var isHidden: Bool
+    
+    @State private var offsetX: CGFloat = 0
+    @State private var isAppeared: Bool = false
+    @State private var proxySizeWidth: CGFloat = 0
+    
+    private let offsetAnimation = Animation.easeIn(duration: 0.5)
+    
+    var body: some View {
+        if !isHidden {
             GeometryReader { proxy in
                 ZStack {
-                    // Background view
-                    Color.black.opacity(isShown ? 0.5 : 0)
+                    Color.black.opacity(isAppeared ? 0.2 : 0)
                         .ignoresSafeArea()
                         .onTapGesture {
-                            withAnimation(offsetAnimation) {
-                                valueX = proxy.size.width
-                                DispatchQueue.main.asyncAfter(deadline: .now() + timerInterval) {
-                                    isShown = false
-                                }
-                            }
+                            slideOut()
                         }
-
-                    if isShown {
-                        let dragGesture = DragGesture()
-                            .onChanged { value in
-                                if value.translation.width > 0 {
-                                    valueX = value.translation.width
-                                }
-                            }
-                            .onEnded { _ in
-                                withAnimation(offsetAnimation) {
-                                    if valueX < proxy.size.width / 2 {
-                                        valueX = 0
-                                    } else {
-                                        valueX = proxy.size.width
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + timerInterval) {
-                                            isShown = false
-                                        }
-                                    }
-                                }
-                            }
-
-                        // The menu view
+                    if isAppeared {
                         HStack {
                             Spacer()
-                            Color.red
-                                .overlay(Text("\(valueX)"))
-                                .frame(width: proxy.size.width * 0.8, height: proxy.size.height)
-                                .offset(x: valueX)
-                                .gesture(dragGesture)
+                            MenuView()
+                                .frame(width: proxy.size.width * 0.85, height: proxy.size.height)
+                                .offset(x: offsetX)
+                                .gesture(setupDragGesture())
                         }.onAppear {
-                            withAnimation(offsetAnimation) {
-                                valueX = 0
-                            }
+                            proxySizeWidth = proxy.size.width
+                            offsetX = proxy.size.width
+                            slideIn()
                         }
-                    } // if
-                } // end of Z
-            } // geo
+                    }
+                } // end of ZStack
+            } // GeometryReader
+            .onAppear {
+                withAnimation {
+                    isAppeared = true
+                }
+            }
+        }
+    }
+    
+    func setupDragGesture() -> some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if value.translation.width > 0 {
+                    offsetX = value.translation.width
+                }
+            }
+            .onEnded { _ in
+                if offsetX < 100 {
+                    slideIn()
+                } else {
+                    slideOut()
+                }
+            }
+    }
+    
+    private func slideOut() {
+        withAnimation(offsetAnimation) {
+            offsetX = proxySizeWidth
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                isHidden = true
+            }
+        }
+    }
+    
+    private func slideIn() {
+        withAnimation(offsetAnimation) {
+            offsetX = 0
+        }
+    }
+}
+
+struct MenuView: View {
+    var body: some View {
+        ZStack {
+            Color.purple.contrast(0.5)
+            Text("This is menu view")
         }
     }
 }
 
 struct ViewWithDragGesture_Previews: PreviewProvider {
     static var previews: some View {
-        AreaWithGesture()
+        ContentView()
     }
 }

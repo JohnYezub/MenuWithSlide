@@ -11,7 +11,7 @@ import SwiftUI
 struct MenuWithSlideApp: App {
     var body: some Scene {
         WindowGroup {
-            AreaWithGesture()
+            ContentView()
         }
     }
 }
